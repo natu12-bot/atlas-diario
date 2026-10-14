@@ -1,0 +1,737 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Atlas Diario</title>
+<meta name="description" content="Capitales y banderas del mundo con repetición espaciada">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Atlas">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#F1F4F3" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0E1416" media="(prefers-color-scheme: dark)">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Dirección: atlas de bolsillo. Papel de mapa frío, tinta de océano como único acento,
+   nombres de país con el espaciado en versalitas de las etiquetas cartográficas, y el
+   símbolo de capital nacional (círculo con punto) como firma. Navegación inferior al pulgar.
+   Base 4px · escala tipográfica 1.25 desde 16 · profundidad: sombras sutiles (claro) / anillo (oscuro). */
+:root{
+  --paper:#F1F4F3;          /* lienzo: papel de atlas, gris con sesgo verde-mar */
+  --sheet:#FFFFFF;          /* superficie elevada */
+  --well:#E6EBEA;           /* entradas y pistas: hundido */
+  --ink:#122022;            /* texto principal */
+  --ink-2:#3E4D50;          /* secundario */
+  --ink-3:#6A7A7D;          /* metadatos */
+  --ink-4:#9AA8AA;          /* deshabilitado */
+  --contour:rgba(18,32,34,.10);   /* líneas de contorno */
+  --contour-strong:rgba(18,32,34,.18);
+  --sea:#1C5D8F;            /* acento único: azul océano del atlas */
+  --sea-ink:#FFFFFF;
+  --sea-wash:rgba(28,93,143,.10);
+  --found:#1F7A4D;  --found-wash:#E2F2E9;   /* acierto / dominada */
+  --miss:#B8382F;   --miss-wash:#F8E4E1;    /* error */
+  --pencil:#B7791F; --pencil-wash:#F7ECD8;  /* aprendiendo (lápiz) */
+  --lift:0 0 0 1px rgba(18,32,34,.06),0 1px 2px -1px rgba(18,32,34,.08),0 4px 12px rgba(18,32,34,.05);
+  --font-ui:"Schibsted Grotesk",-apple-system,"SF Pro Text",system-ui,sans-serif;
+  --font-data:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  --font-flag:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;
+  --r-ctl:10px; --r-card:16px; --r-sheet:24px;
+  --ease:cubic-bezier(.23,1,.32,1);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#0E1416; --sheet:#161E21; --well:#0A0F11;
+  --ink:#E6EEEF; --ink-2:#B4C2C4; --ink-3:#7F9093; --ink-4:#52615F;
+  --contour:rgba(255,255,255,.08); --contour-strong:rgba(255,255,255,.14);
+  --sea:#7DB4E4; --sea-ink:#0B1620; --sea-wash:rgba(125,180,228,.14);
+  --found:#5CC08C; --found-wash:rgba(92,192,140,.14);
+  --miss:#EE7F74; --miss-wash:rgba(238,127,116,.14);
+  --pencil:#E0AC57; --pencil-wash:rgba(224,172,87,.14);
+  --lift:0 0 0 1px rgba(255,255,255,.08);
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#0E1416; --sheet:#161E21; --well:#0A0F11;
+  --ink:#E6EEEF; --ink-2:#B4C2C4; --ink-3:#7F9093; --ink-4:#52615F;
+  --contour:rgba(255,255,255,.08); --contour-strong:rgba(255,255,255,.14);
+  --sea:#7DB4E4; --sea-ink:#0B1620; --sea-wash:rgba(125,180,228,.14);
+  --found:#5CC08C; --found-wash:rgba(92,192,140,.14);
+  --miss:#EE7F74; --miss-wash:rgba(238,127,116,.14);
+  --pencil:#E0AC57; --pencil-wash:rgba(224,172,87,.14);
+  --lift:0 0 0 1px rgba(255,255,255,.08);
+  color-scheme:dark}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;height:100%}
+body{margin:0;min-height:100%;background:var(--paper);color:var(--ink);font:400 16px/1.5 var(--font-ui);-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--sea);outline-offset:2px}
+
+/* ---- estructura ---- */
+.app{max-width:560px;margin:0 auto;padding-inline:max(16px,env(safe-area-inset-left));padding-block:calc(8px + env(safe-area-inset-top)) calc(96px + env(safe-area-inset-bottom))}
+.app.focus{padding-bottom:calc(24px + env(safe-area-inset-bottom))}
+.appbar{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding-block:12px 20px}
+.appbar h1{margin:0;font-size:31px;font-weight:800;letter-spacing:-.025em;line-height:1.1}
+.streak{font:500 13px var(--font-data);color:var(--ink-3);font-variant-numeric:tabular-nums;white-space:nowrap}
+.streak b{color:var(--ink);font-weight:500}
+
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:10;background:color-mix(in srgb,var(--paper) 86%,transparent);backdrop-filter:saturate(1.6) blur(16px);-webkit-backdrop-filter:saturate(1.6) blur(16px);border-top:1px solid var(--contour);padding-bottom:env(safe-area-inset-bottom)}
+.tabbar nav{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
+.tabbar button{appearance:none;border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px 6px;min-height:52px;font-size:11px;font-weight:600;letter-spacing:.01em;color:var(--ink-3);cursor:pointer;transition:color .15s var(--ease)}
+.tabbar button svg{width:24px;height:24px}
+.tabbar button[aria-current="page"]{color:var(--sea)}
+
+/* ---- primitivas ---- */
+.eyebrow{font:500 12px var(--font-data);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.sheet{background:var(--sheet);border-radius:var(--r-card);box-shadow:var(--lift)}
+.btn{appearance:none;border:0;cursor:pointer;min-height:48px;padding:12px 20px;border-radius:12px;font-weight:700;font-size:16px;background:var(--sea);color:var(--sea-ink);transition:transform .12s var(--ease),opacity .15s var(--ease);touch-action:manipulation}
+.btn:active{transform:scale(.97)}
+.btn:disabled{opacity:.4;cursor:default;transform:none}
+.btn.block{width:100%}
+.btn.quiet{background:var(--well);color:var(--ink)}
+.btn.line{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1px var(--contour-strong)}
+.btn.danger{background:transparent;color:var(--miss);box-shadow:inset 0 0 0 1px var(--miss)}
+.stack{display:flex;flex-direction:column}
+.g4{gap:4px}.g8{gap:8px}.g12{gap:12px}.g16{gap:16px}.g24{gap:24px}.g32{gap:32px}
+.row{display:flex;align-items:center;gap:12px}
+.spread{justify-content:space-between}
+.muted{color:var(--ink-3)}
+.num{font-variant-numeric:tabular-nums}
+p{margin:0;text-wrap:pretty}
+
+/* símbolo de capital: círculo con punto */
+.capmark{display:inline-block;width:.72em;height:.72em;vertical-align:.02em;margin-right:.32em;flex:none}
+.capmark circle{fill:none;stroke:currentColor;stroke-width:2.4}
+.capmark .dot{fill:currentColor;stroke:none}
+/* etiqueta cartográfica: versalitas espaciadas */
+.maplabel{text-transform:uppercase;letter-spacing:.14em;font-weight:700}
+
+/* ---- Hoy ---- */
+.today-hero{padding-block:8px 8px}
+.hero-num{font-size:61px;line-height:1;font-weight:800;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+.hero-sub{font-size:20px;font-weight:600;letter-spacing:-.01em;color:var(--ink-2)}
+.breakdown{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:14px;color:var(--ink-3)}
+.breakdown span b{color:var(--ink);font-weight:600}
+.legend-dot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;vertical-align:1px}
+
+.meter{height:6px;border-radius:3px;background:var(--well);display:flex;overflow:hidden}
+.meter i{display:block;height:100%}
+.m-found{background:var(--found)} .m-sea{background:var(--sea)} .m-pencil{background:var(--pencil)}
+.track{display:grid;grid-template-columns:1fr auto;gap:8px 12px;align-items:baseline}
+.track .meter{grid-column:1/-1}
+.track b{font-weight:600}
+.track .val{font:500 13px var(--font-data);color:var(--ink-3);font-variant-numeric:tabular-nums}
+.track .val b{color:var(--ink);font-weight:500}
+
+.list{display:flex;flex-direction:column}
+.list > *{position:relative}
+.list > * + *::before{content:"";position:absolute;top:0;left:16px;right:0;height:1px;background:var(--contour)}
+.cell{appearance:none;border:0;background:none;width:100%;text-align:left;display:flex;align-items:center;gap:12px;min-height:52px;padding:12px 16px;cursor:pointer}
+.cell:active{background:var(--well)}
+.cell .t{flex:1;min-width:0;font-weight:600}
+.cell .t small{display:block;font-weight:400;font-size:14px;color:var(--ink-3)}
+.cell .chev{color:var(--ink-4);flex:none}
+.count{font:500 13px var(--font-data);color:var(--ink-3);font-variant-numeric:tabular-nums}
+.section-h{display:flex;justify-content:space-between;align-items:baseline;padding-inline:4px}
+
+/* ---- Pregunta ---- */
+.qbar{display:flex;align-items:center;gap:12px;padding-block:8px 16px}
+.iconbtn{appearance:none;border:0;background:var(--well);border-radius:50%;width:40px;height:40px;display:grid;place-items:center;cursor:pointer;flex:none;color:var(--ink-2)}
+.iconbtn:active{transform:scale(.95)}
+.progress{flex:1;height:6px;border-radius:3px;background:var(--well);overflow:hidden}
+.progress i{display:block;height:100%;width:100%;background:var(--sea);transform-origin:left;transition:transform .3s var(--ease)}
+.prompt{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding-block:24px 32px}
+.prompt .flag{font-family:var(--font-flag);font-size:120px;line-height:1}
+.prompt .country{font-size:31px;line-height:1.15;text-wrap:balance}
+.prompt .cityname{font-size:39px;font-weight:800;letter-spacing:-.02em;line-height:1.1;text-wrap:balance;display:flex;align-items:center;justify-content:center;flex-wrap:wrap}
+.prompt .ask{font-size:16px;color:var(--ink-3)}
+.badge{font:500 11px var(--font-data);letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:var(--pencil-wash);color:var(--pencil)}
+
+.choices{display:flex;flex-direction:column;gap:8px}
+.choice{appearance:none;border:0;cursor:pointer;width:100%;min-height:56px;display:flex;align-items:center;gap:12px;padding:12px 16px;text-align:left;border-radius:14px;background:var(--sheet);box-shadow:var(--lift);font-size:17px;font-weight:600;transition:transform .12s var(--ease),background-color .15s var(--ease);touch-action:manipulation}
+.choice:active{transform:scale(.98)}
+.choice .key{font:500 12px var(--font-data);color:var(--ink-4);width:16px;flex:none}
+.choice .txt{flex:1;min-width:0}
+.choice.right{background:var(--found-wash);box-shadow:inset 0 0 0 2px var(--found)}
+.choice.wrong{background:var(--miss-wash);box-shadow:inset 0 0 0 2px var(--miss)}
+.choice.dim{opacity:.45}
+.choice[disabled]{cursor:default;transform:none}
+.flaggrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.flaggrid .choice{justify-content:center;min-height:112px;font-family:var(--font-flag);font-size:64px;line-height:1;padding:8px;position:relative}
+.flaggrid .choice .key{position:absolute;top:8px;left:12px;font-family:var(--font-data)}
+
+.answer{display:flex;flex-direction:column;gap:12px}
+.field{width:100%;min-height:56px;padding:14px 16px;font:600 18px var(--font-ui);color:var(--ink);background:var(--well);border:0;border-radius:14px;box-shadow:inset 0 0 0 1px var(--contour)}
+.field:focus{outline:none;box-shadow:inset 0 0 0 2px var(--sea)}
+.field::placeholder{color:var(--ink-4);font-weight:400}
+.aux{display:flex;gap:8px}
+.aux .btn{flex:1;min-height:44px;font-size:15px}
+.hint{font-size:14px;color:var(--ink-2);text-align:center;min-height:21px}
+
+/* hoja de resultado (al pulgar) */
+.result{position:fixed;left:0;right:0;bottom:0;z-index:20;padding:20px max(16px,env(safe-area-inset-left)) calc(16px + env(safe-area-inset-bottom));border-radius:var(--r-sheet) var(--r-sheet) 0 0;background:var(--sheet);box-shadow:0 -1px 0 var(--contour),0 -12px 32px rgba(0,0,0,.10);animation:rise .28s var(--ease)}
+.result .inner{max-width:528px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.result .verdict{font-size:20px;font-weight:800;letter-spacing:-.01em}
+.result.ok .verdict{color:var(--found)} .result.no .verdict{color:var(--miss)}
+.fact{display:flex;align-items:center;gap:12px}
+.fact .f{font-family:var(--font-flag);font-size:40px;line-height:1}
+.fact .who{min-width:0}
+.fact .who .maplabel{font-size:13px;color:var(--ink-2)}
+.fact .who .c{font-size:18px;font-weight:700;display:flex;align-items:center}
+.note{font-size:14px;color:var(--ink-2);background:var(--well);border-radius:10px;padding:8px 12px}
+.next-when{font:500 12px var(--font-data);color:var(--ink-3)}
+@keyframes rise{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}
+
+/* sello de pasaporte: firma al dominar */
+.stamp{align-self:flex-start;display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;color:var(--found);box-shadow:inset 0 0 0 1.5px var(--found);font:500 12px var(--font-data);letter-spacing:.08em;text-transform:uppercase;transform:rotate(-3deg);animation:stamp .35s var(--ease)}
+@keyframes stamp{from{transform:rotate(-3deg) scale(1.25);opacity:0}to{transform:rotate(-3deg) scale(1);opacity:1}}
+
+/* tarjeta de país nuevo */
+.intro{padding:24px 16px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px}
+.intro .flag{font-family:var(--font-flag);font-size:120px;line-height:1}
+.intro .country{font-size:25px}
+.intro .cap{font-size:31px;font-weight:800;letter-spacing:-.02em;display:flex;align-items:center}
+.intro .cont{font:500 12px var(--font-data);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.intro .tip{font-size:14px;color:var(--ink-3);max-width:32ch}
+
+/* resumen */
+.summary-num{font-size:61px;font-weight:800;letter-spacing:-.04em;line-height:1;font-variant-numeric:tabular-nums}
+.kv{display:flex;gap:24px;flex-wrap:wrap}
+.kv div{display:flex;flex-direction:column}
+.kv b{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
+.kv span{font-size:13px;color:var(--ink-3)}
+
+/* listas de países */
+.ctry{display:grid;grid-template-columns:36px 1fr auto;gap:12px;align-items:center;padding:12px 16px;min-height:56px}
+.ctry .f{font-family:var(--font-flag);font-size:28px;line-height:1}
+.ctry .n{min-width:0}
+.ctry .n b{display:block;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ctry .n span{font-size:14px;color:var(--ink-3);display:flex;align-items:center}
+.pips{display:flex;gap:4px}
+.pip{width:28px;height:22px;border-radius:6px;display:grid;place-items:center;font:500 11px var(--font-data);color:var(--ink-4);box-shadow:inset 0 0 0 1px var(--contour-strong)}
+.pip.p-pencil{background:var(--pencil-wash);color:var(--pencil);box-shadow:none}
+.pip.p-sea{background:var(--sea-wash);color:var(--sea);box-shadow:none}
+.pip.p-found{background:var(--found);color:var(--sheet);box-shadow:none}
+
+.search{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);padding-block:4px 12px;display:flex;flex-direction:column;gap:12px}
+.chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin-inline:-16px;padding-inline:16px}
+.chips::-webkit-scrollbar{display:none}
+.chip{appearance:none;border:0;flex:none;cursor:pointer;min-height:36px;padding:6px 14px;border-radius:999px;background:var(--well);font-size:14px;font-weight:600;color:var(--ink-2)}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+
+.heat{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.heat i{aspect-ratio:1;border-radius:4px;background:var(--well)}
+.heat i.h1{background:color-mix(in srgb,var(--sea) 30%,var(--well))}
+.heat i.h2{background:color-mix(in srgb,var(--sea) 60%,var(--well))}
+.heat i.h3{background:var(--sea)}
+.heat i.today{box-shadow:inset 0 0 0 1.5px var(--ink)}
+.controw{display:grid;grid-template-columns:84px 1fr 44px;gap:12px;align-items:center;font-size:15px}
+.controw .pct{font:500 13px var(--font-data);text-align:right;color:var(--ink-3);font-variant-numeric:tabular-nums}
+
+/* ajustes */
+.setting{padding:16px;display:flex;flex-direction:column;gap:12px}
+.setting + .setting{border-top:1px solid var(--contour)}
+.setting .lbl{font-weight:600}
+.setting .help{font-size:14px;color:var(--ink-3)}
+.segmented{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--well);border-radius:12px;padding:4px;gap:4px}
+.segmented button{appearance:none;border:0;background:none;min-height:36px;border-radius:8px;font-size:14px;font-weight:600;color:var(--ink-3);cursor:pointer;padding-inline:4px}
+.segmented button[aria-pressed="true"]{background:var(--sheet);color:var(--ink);box-shadow:var(--lift)}
+.stepper{display:flex;align-items:center;gap:12px}
+.stepper .v{min-width:40px;text-align:center;font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
+textarea.field{min-height:88px;font:500 12px var(--font-data);resize:vertical}
+.empty{padding:24px 16px;text-align:center;color:var(--ink-3);font-size:15px}
+
+.enter{animation:enter .22s var(--ease)}
+@keyframes enter{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (max-width:360px){.prompt .flag,.intro .flag{font-size:96px}.hero-num,.summary-num{font-size:49px}.flaggrid .choice{font-size:52px;min-height:96px}}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <header class="appbar" id="appbar"><h1 id="title">Hoy</h1><span class="streak" id="streak"></span></header>
+  <main id="view"></main>
+</div>
+<div class="tabbar" id="tabbar"><nav aria-label="Secciones">
+  <button data-tab="hoy" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg>Hoy</button>
+  <button data-tab="progreso"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Progreso</button>
+  <button data-tab="atlas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/></svg>Atlas</button>
+  <button data-tab="ajustes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>Ajustes</button>
+</nav></div>
+<div id="resultHost"></div>
+
+<script>
+const RAW=`DZ|Argelia|Argel~Algiers|AF
+AO|Angola|Luanda|AF
+BJ|Benín|Porto Novo~Porto-Novo|AF|Porto Novo es la capital oficial; el gobierno opera en Cotonú.
+BW|Botsuana~Botswana|Gaborone|AF
+BF|Burkina Faso|Uagadugú~Ouagadougou|AF
+BI|Burundi|Gitega|AF|Gitega es capital política desde 2019; Buyumbura sigue siendo la ciudad económica.
+CV|Cabo Verde|Praia|AF
+CM|Camerún|Yaundé~Yaounde|AF
+CF|República Centroafricana~Centroafrica|Bangui|AF
+TD|Chad|Yamena~N'Djamena|AF
+KM|Comoras|Moroni|AF
+CG|República del Congo~Congo~Congo-Brazzaville|Brazzaville|AF
+CD|República Democrática del Congo~RDC~Congo-Kinsasa|Kinsasa~Kinshasa|AF
+CI|Costa de Marfil|Yamusukro~Yamoussoukro|AF|Yamusukro es la capital oficial; Abiyán es la ciudad principal.
+DJ|Yibuti~Djibouti|Yibuti~Djibouti|AF
+EG|Egipto|El Cairo~Cairo|AF
+GQ|Guinea Ecuatorial|Malabo|AF
+ER|Eritrea|Asmara|AF
+SZ|Esuatini~Suazilandia|Mbabane~Lobamba|AF|Mbabane es la capital administrativa; Lobamba, la real y legislativa.
+ET|Etiopía|Adís Abeba~Addis Abeba|AF
+GA|Gabón|Libreville|AF
+GM|Gambia|Banjul|AF
+GH|Ghana|Acra~Accra|AF
+GN|Guinea|Conakri~Conakry|AF
+GW|Guinea-Bisáu~Guinea Bissau|Bisáu~Bissau|AF
+KE|Kenia~Kenya|Nairobi|AF
+LS|Lesoto~Lesotho|Maseru|AF
+LR|Liberia|Monrovia|AF
+LY|Libia|Trípoli|AF
+MG|Madagascar|Antananarivo|AF
+MW|Malaui~Malawi|Lilongüe~Lilongwe|AF
+ML|Malí|Bamako|AF
+MR|Mauritania|Nuakchot~Nouakchott|AF
+MU|Mauricio|Port Louis~Puerto Luis|AF
+MA|Marruecos|Rabat|AF|Rabat, no Casablanca.
+MZ|Mozambique|Maputo|AF
+NA|Namibia|Windhoek|AF
+NE|Níger|Niamey|AF
+NG|Nigeria|Abuya~Abuja|AF|Abuya reemplazó a Lagos en 1991.
+RW|Ruanda~Rwanda|Kigali|AF
+ST|Santo Tomé y Príncipe|Santo Tomé~Sao Tome|AF
+SN|Senegal|Dakar|AF
+SC|Seychelles|Victoria|AF
+SL|Sierra Leona|Freetown|AF
+SO|Somalia|Mogadiscio~Mogadishu|AF
+ZA|Sudáfrica|Pretoria~Ciudad del Cabo~Bloemfontein|AF|Tiene tres: Pretoria (ejecutiva), Ciudad del Cabo (legislativa), Bloemfontein (judicial).
+SS|Sudán del Sur|Yuba~Juba|AF
+SD|Sudán|Jartum~Khartoum|AF
+TZ|Tanzania|Dodoma|AF|Dodoma es la capital; Dar es-Salam es la ciudad principal.
+TG|Togo|Lomé|AF
+TN|Túnez|Túnez~Tunez|AF
+UG|Uganda|Kampala|AF
+ZM|Zambia|Lusaka|AF
+ZW|Zimbabue~Zimbabwe|Harare|AF
+AG|Antigua y Barbuda|Saint John's~Saint Johns|AM
+AR|Argentina|Buenos Aires|AM
+BS|Bahamas|Nasáu~Nassau|AM
+BB|Barbados|Bridgetown|AM
+BZ|Belice~Belize|Belmopán|AM|Belmopán, no Ciudad de Belice.
+BO|Bolivia|Sucre~La Paz|AM|Sucre es la capital constitucional; La Paz es sede de gobierno.
+BR|Brasil|Brasilia|AM|Brasilia, no Río ni São Paulo.
+CA|Canadá|Ottawa|AM|Ottawa, no Toronto.
+CL|Chile|Santiago~Santiago de Chile|AM
+CO|Colombia|Bogotá|AM
+CR|Costa Rica|San José|AM
+CU|Cuba|La Habana~Habana|AM
+DM|Dominica|Roseau|AM
+EC|Ecuador|Quito|AM
+SV|El Salvador|San Salvador|AM
+US|Estados Unidos~EEUU~EUA~USA|Washington D. C.~Washington~Washington DC|AM
+GD|Granada|Saint George's~Saint Georges|AM
+GT|Guatemala|Ciudad de Guatemala~Guatemala|AM
+GY|Guyana|Georgetown|AM
+HT|Haití|Puerto Príncipe~Port-au-Prince|AM
+HN|Honduras|Tegucigalpa|AM
+JM|Jamaica|Kingston|AM
+MX|México|Ciudad de México~CDMX~Mexico|AM
+NI|Nicaragua|Managua|AM
+PA|Panamá|Ciudad de Panamá~Panama|AM
+PY|Paraguay|Asunción|AM
+PE|Perú|Lima|AM
+DO|República Dominicana|Santo Domingo|AM
+KN|San Cristóbal y Nieves~Saint Kitts y Nevis|Basseterre|AM
+VC|San Vicente y las Granadinas|Kingstown|AM
+LC|Santa Lucía|Castries|AM
+SR|Surinam~Suriname|Paramaribo|AM
+TT|Trinidad y Tobago|Puerto España~Port of Spain|AM
+UY|Uruguay|Montevideo|AM
+VE|Venezuela|Caracas|AM
+AF|Afganistán|Kabul|AS
+SA|Arabia Saudita~Arabia Saudí|Riad~Riyadh|AS
+AM|Armenia|Ereván~Yerevan|AS
+AZ|Azerbaiyán|Bakú|AS
+BH|Baréin~Bahréin~Bahrein|Manama|AS
+BD|Bangladés~Bangladesh|Daca~Dhaka|AS
+BT|Bután|Timbu~Thimphu|AS
+MM|Birmania~Myanmar|Naipyidó~Naypyidaw|AS|Naipyidó reemplazó a Rangún en 2006.
+BN|Brunéi|Bandar Seri Begawan|AS
+KH|Camboya|Nom Pen~Phnom Penh|AS
+CN|China|Pekín~Beijing|AS
+KP|Corea del Norte|Pionyang~Pyongyang|AS
+KR|Corea del Sur|Seúl|AS
+AE|Emiratos Árabes Unidos~Emiratos~EAU|Abu Dabi~Abu Dhabi|AS|Abu Dabi, no Dubái.
+PH|Filipinas|Manila|AS
+GE|Georgia|Tiflis~Tbilisi|AS
+IN|India|Nueva Delhi~Delhi|AS
+ID|Indonesia|Yakarta~Jakarta~Nusantara|AS|Yakarta sigue siendo la capital mientras avanza el traslado a Nusantara.
+IQ|Irak|Bagdad|AS
+IR|Irán|Teherán|AS
+IL|Israel|Jerusalén|AS|Israel designa Jerusalén; muchos países mantienen su embajada en Tel Aviv.
+JP|Japón|Tokio|AS
+JO|Jordania|Amán|AS
+KZ|Kazajistán|Astaná~Nur-Sultán|AS|Se llamó Nur-Sultán entre 2019 y 2022.
+KG|Kirguistán~Kirguizistán|Biskek~Bishkek|AS
+KW|Kuwait|Kuwait~Ciudad de Kuwait|AS
+LA|Laos|Vientián~Vientiane|AS
+LB|Líbano|Beirut|AS
+MY|Malasia|Kuala Lumpur|AS|Kuala Lumpur es la capital; Putrajaya es la sede administrativa.
+MV|Maldivas|Malé|AS
+MN|Mongolia|Ulán Bator~Ulaanbaatar|AS
+NP|Nepal|Katmandú|AS
+OM|Omán|Mascate~Muscat|AS
+PK|Pakistán|Islamabad|AS|Islamabad, no Karachi.
+PS|Palestina|Jerusalén Este~Ramala|AS|Jerusalén Este es la capital proclamada; la administración opera desde Ramala.
+QA|Catar~Qatar|Doha|AS
+SG|Singapur|Singapur|AS
+SY|Siria|Damasco|AS
+LK|Sri Lanka|Sri Jayawardenapura Kotte~Kotte~Colombo|AS|Sri Jayawardenapura Kotte es la capital legislativa; Colombo, la comercial.
+TJ|Tayikistán|Dusambé~Dushanbe|AS
+TH|Tailandia|Bangkok|AS
+TL|Timor Oriental~Timor Leste|Dili|AS
+TR|Turquía~Türkiye|Ankara|AS|Ankara, no Estambul.
+TM|Turkmenistán|Asjabad~Ashgabat|AS
+UZ|Uzbekistán|Taskent~Tashkent|AS
+VN|Vietnam|Hanói|AS
+YE|Yemen|Saná~Sanaa|AS
+AL|Albania|Tirana|EU
+DE|Alemania|Berlín|EU
+AD|Andorra|Andorra la Vieja~Andorra la Vella|EU
+AT|Austria|Viena|EU
+BE|Bélgica|Bruselas|EU
+BY|Bielorrusia~Belarús|Minsk|EU
+BA|Bosnia y Herzegovina|Sarajevo|EU
+BG|Bulgaria|Sofía|EU
+CY|Chipre|Nicosia|EU
+VA|Ciudad del Vaticano~Vaticano~Santa Sede|Ciudad del Vaticano~Vaticano|EU
+HR|Croacia|Zagreb|EU
+DK|Dinamarca|Copenhague|EU
+SK|Eslovaquia|Bratislava|EU
+SI|Eslovenia|Liubliana~Ljubljana|EU
+ES|España|Madrid|EU
+EE|Estonia|Tallin~Tallinn|EU
+FI|Finlandia|Helsinki|EU
+FR|Francia|París|EU
+GR|Grecia|Atenas|EU
+HU|Hungría|Budapest|EU
+IE|Irlanda|Dublín|EU
+IS|Islandia|Reikiavik~Reykjavik|EU
+IT|Italia|Roma|EU
+LV|Letonia|Riga|EU
+LI|Liechtenstein|Vaduz|EU
+LT|Lituania|Vilna~Vilnius|EU
+LU|Luxemburgo|Luxemburgo|EU
+MK|Macedonia del Norte~Macedonia|Skopie~Skopje|EU
+MT|Malta|La Valeta~Valletta|EU
+MD|Moldavia~Moldova|Chisináu~Chisinau|EU
+MC|Mónaco|Mónaco|EU
+ME|Montenegro|Podgorica|EU
+NO|Noruega|Oslo|EU
+NL|Países Bajos~Holanda|Ámsterdam|EU|Ámsterdam es la capital; el gobierno está en La Haya.
+PL|Polonia|Varsovia|EU
+PT|Portugal|Lisboa|EU
+GB|Reino Unido~Gran Bretaña|Londres|EU
+CZ|República Checa~Chequia|Praga|EU
+RO|Rumania~Rumanía|Bucarest|EU
+RU|Rusia|Moscú|EU
+SM|San Marino|San Marino|EU
+RS|Serbia|Belgrado|EU
+SE|Suecia|Estocolmo|EU
+CH|Suiza|Berna|EU|Berna es la "ciudad federal"; Suiza no fija capital por ley. No es Zúrich ni Ginebra.
+UA|Ucrania|Kiev~Kyiv|EU
+AU|Australia|Canberra|OC|Canberra, no Sídney.
+FJ|Fiyi~Fiji|Suva|OC
+KI|Kiribati|Tarawa Sur~Tarawa|OC
+MH|Islas Marshall~Marshall|Majuro|OC
+FM|Micronesia|Palikir|OC
+NR|Nauru|Yaren|OC|Nauru no tiene capital oficial; Yaren es la sede de gobierno.
+NZ|Nueva Zelanda|Wellington|OC|Wellington, no Auckland.
+PW|Palaos~Palau|Ngerulmud|OC
+PG|Papúa Nueva Guinea|Port Moresby|OC
+WS|Samoa|Apia|OC
+SB|Islas Salomón~Salomón|Honiara|OC
+TO|Tonga|Nukualofa~Nuku'alofa|OC
+TV|Tuvalu|Funafuti|OC
+VU|Vanuatu|Port Vila|OC`;
+const CONT={AF:"África",AM:"América",AS:"Asia",EU:"Europa",OC:"Oceanía"};
+const LOOK=[["TD","RO","AD","MD"],["ID","MC","PL","SG"],["IE","CI","IT"],["NL","LU","FR","RU","HR","PY"],["AU","NZ","FJ","TV"],["SN","ML","GN","CM"],["NO","IS","DK","FI","SE"],["SI","SK","RU","RS"],["CO","EC","VE"],["SV","NI","HN","GT"],["JO","PS","SD","KW","AE"],["EG","SY","IQ","YE"],["BE","DE"],["AT","LV","LB"],["NE","IN"],["GH","BO","LT","ET"],["QA","BH"],["MY","US","LR"],["CU","PR","UY","GR"],["KR","JP"],["CD","TZ","CG"],["AR","SV","NI"],["HT","LI"],["ZA","VU"]];
+const C=RAW.trim().split("\n").map(l=>{const[iso,n,c,ct,note]=l.split("|");const ns=n.split("~"),cs=c.split("~");return{iso,name:ns[0],nameAlts:ns,cap:cs[0],capAlts:cs,cont:ct,note:note||""}});
+const BY=Object.fromEntries(C.map(c=>[c.iso,c]));
+const flag=iso=>String.fromCodePoint(...[...iso].map(ch=>127397+ch.charCodeAt(0)));
+const DAY=864e5, IV=[0,1,2,4,9,20,45];
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s).replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+const dkey=(d=new Date())=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+const norm=s=>s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim();
+function lev(a,b){const m=a.length,n=b.length;if(!m)return n;if(!n)return m;let p=Array.from({length:n+1},(_,i)=>i);for(let i=1;i<=m;i++){const c=[i];for(let j=1;j<=n;j++)c[j]=Math.min(p[j]+1,c[j-1]+1,p[j-1]+(a[i-1]===b[j-1]?0:1));p=c}return p[n]}
+const CAP='<svg class="capmark" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.6"/><circle class="dot" cx="6" cy="6" r="1.9"/></svg>';
+const CHEV='<svg class="chev" width="8" height="14" viewBox="0 0 8 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l6 6-6 6"/></svg>';
+const X='<svg width="14" height="14" viewBox="0 0 14 14" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 2l10 10M12 2L2 12"/></svg>';
+
+// ---------- estado (compatible con el respaldo de la versión anterior) ----------
+const KEY="atlas-diario-v1";
+const DEF={cards:{},days:{},settings:{track:"both",cont:"all",ans:"auto",newPerDay:10,size:20},newDay:{d:"",n:0}};
+let S;
+function load(){let r=null;try{r=JSON.parse(localStorage.getItem(KEY))}catch(e){}S=Object.assign(structuredClone(DEF),r||{});S.settings=Object.assign({},DEF.settings,S.settings)}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+load();
+const card=k=>S.cards[k]||(S.cards[k]={b:0,due:0,ok:0,bad:0,conf:{}});
+const seen=k=>!!S.cards[k]&&(S.cards[k].ok+S.cards[k].bad)>0;
+const boxOf=k=>S.cards[k]?S.cards[k].b:0;
+function keysFor(st=S.settings){const t=st.track==="both"?["c","f"]:[st.track];const out=[];for(const c of C){if(st.cont!=="all"&&c.cont!==st.cont)continue;for(const x of t)out.push(c.iso+":"+x)}return out}
+const ALL={track:"both",cont:"all"};
+function dueKeys(st){const now=Date.now();return keysFor(st).filter(k=>seen(k)&&S.cards[k].due<=now).sort((a,b)=>S.cards[a].due-S.cards[b].due||S.cards[a].b-S.cards[b].b)}
+function newLeft(){if(S.newDay.d!==dkey())S.newDay={d:dkey(),n:0};return Math.max(0,S.settings.newPerDay-S.newDay.n)}
+function streak(){let n=0,d=new Date();if(!S.days[dkey(d)])d=new Date(d-DAY);while(S.days[dkey(d)]){n++;d=new Date(d-DAY)}return n}
+function counts(keys){let dom=0,con=0,apr=0,nue=0;for(const k of keys){const b=boxOf(k);if(!seen(k))nue++;else if(b>=5)dom++;else if(b>=3)con++;else apr++}return{dom,con,apr,nue,tot:keys.length}}
+
+// Opción múltiple = reconocer; escribir = recordar. Solo escribir lleva a "dominada" (caja 5+).
+function grade(k,ok,how,guess){const c=card(k);const was=c.b;let stamped=false;
+  if(ok){c.ok++;let nb=Math.min(6,was+(how==="type"?2:1));if(how==="mc")nb=Math.min(nb,Math.max(was,4));if(was===0)nb=Math.max(1,nb);c.b=nb;c.due=Date.now()+IV[nb]*DAY;if(nb>=5&&!c.stamped){c.stamped=1;stamped=true}}
+  else{c.bad++;c.b=Math.max(1,Math.floor(was/2));c.due=Date.now()+(c.b>=2?DAY:0);if(guess)c.conf[guess]=(c.conf[guess]||0)+1;c.lastBad=Date.now()}
+  const t=dkey();S.days[t]=S.days[t]||{n:0,ok:0};S.days[t].n++;if(ok)S.days[t].ok++;save();return stamped}
+
+// ---------- sesión ----------
+let sess=null;
+function plan(){const st=S.settings;const due=dueKeys(st);const fresh=keysFor(st).filter(k=>!seen(k));const nl=newLeft();
+  const isos=[...new Set(fresh.map(k=>k.split(":")[0]))];const per=st.track==="both"?2:1;
+  const newCountries=Math.min(isos.length,Math.ceil(nl/per));
+  return{due:due.length,newC:newCountries,newCards:Math.min(fresh.length,newCountries*per),fresh,isos}}
+function buildSession(opts={}){const st=S.settings;let q=[];let extra=false;
+  if(opts.keys){q=opts.keys.map(k=>({k,t:"q"}))}
+  else{const due=dueKeys(st);const p=plan();
+    const pick=shuffle(p.isos).slice(0,p.newC);
+    const news=[];for(const iso of pick)for(const k of p.fresh.filter(x=>x.startsWith(iso+":")))news.push(k);
+    const rev=due.slice(0,Math.max(st.size-news.length,Math.min(due.length,10)));
+    q=shuffle(rev).map(k=>({k,t:"q"}));
+    const byIso={};news.forEach(k=>{const i=k.split(":")[0];(byIso[i]=byIso[i]||[]).push(k)});
+    Object.values(byIso).forEach((ks,i,arr)=>{const pos=Math.min(q.length,Math.floor((i+1)*q.length/(arr.length+1))+i*3);q.splice(pos,0,{k:ks[0],t:"intro"});ks.forEach((k,j)=>q.splice(Math.min(q.length,pos+2+j*2),0,{k,t:"q",fresh:true}))});
+    if(!q.length){extra=true;const pool=keysFor(st).filter(seen).sort((a,b)=>(S.cards[a].b-S.cards[b].b)||((S.cards[b].bad||0)-(S.cards[a].bad||0)));q=pool.slice(0,st.size).map(k=>({k,t:"q"}))}}
+  sess={q,i:0,ok:0,bad:0,introSeen:0,stamps:0,total:q.filter(x=>x.t==="q").length,missed:new Set(),extra,forceType:!!opts.forceType}}
+function makeQ(item){const[iso,tr]=item.k.split(":");const c=BY[iso];const b=boxOf(item.k);let dir,how;
+  if(tr==="c"){const trivial=norm(c.cap)===norm(c.name);dir=(!trivial&&b>=2&&Math.random()<.3)?"cap2country":"country2cap"}
+  else dir=(b>=1&&Math.random()<.3)?"country2flag":"flag2country";
+  const m=S.settings.ans;
+  if(dir==="country2flag")how="mc";else if(sess.forceType||m==="type")how="type";else if(m==="mc")how="mc";else how=(b>=2&&!item.fresh)?"type":"mc";
+  return{c,iso,tr,dir,how,k:item.k,hint:false}}
+function distractors(c,kind,k){const out=[];const add=i=>{if(i&&i!==c.iso&&BY[i]&&!out.includes(i))out.push(i)};
+  const cf=card(k).conf;Object.keys(cf).sort((a,b)=>cf[b]-cf[a]).slice(0,1).forEach(add);
+  if(kind==="flag"){for(const g of LOOK)if(g.includes(c.iso))shuffle(g).forEach(add);out.splice(2)}
+  shuffle(C.filter(x=>x.cont===c.cont).map(x=>x.iso)).forEach(i=>{if(out.length<3)add(i)});
+  shuffle(C.map(x=>x.iso)).forEach(i=>{if(out.length<3)add(i)});
+  return shuffle([c.iso,...out.slice(0,3)])}
+
+// ---------- navegación ----------
+let tab="hoy";const TITLES={hoy:"Hoy",progreso:"Progreso",atlas:"Atlas",ajustes:"Ajustes"};
+$$(".tabbar button").forEach(b=>b.onclick=()=>{tab=b.dataset.tab;window.scrollTo(0,0);render()});
+function chrome(focus){$("#tabbar").hidden=focus;$("#appbar").hidden=focus;$("#app").classList.toggle("focus",focus);
+  $$(".tabbar button").forEach(b=>b.dataset.tab===tab?b.setAttribute("aria-current","page"):b.removeAttribute("aria-current"));
+  $("#title").textContent=TITLES[tab];const s=streak();$("#streak").innerHTML=s?`racha <b>${s}</b> ${s===1?"día":"días"}`:"sin racha aún"}
+function render(){$("#resultHost").innerHTML="";const inSess=tab==="hoy"&&sess&&!sess.done;chrome(inSess);
+  const v=$("#view");v.classList.remove("enter");void v.offsetWidth;v.classList.add("enter");
+  if(tab==="hoy"){if(inSess)sess.q[sess.i].t==="intro"?renderIntro():renderQ();else if(sess&&sess.done)renderSummary();else renderHome()}
+  else if(tab==="progreso")renderProgress();else if(tab==="atlas")renderAtlas();else renderSettings()}
+
+function meter(ct){const p=n=>(100*n/ct.tot)+"%";return `<div class="meter" aria-hidden="true"><i class="m-found" style="width:${p(ct.dom)}"></i><i class="m-sea" style="width:${p(ct.con)}"></i><i class="m-pencil" style="width:${p(ct.apr)}"></i></div>`}
+const fmtDate=()=>new Date().toLocaleDateString("es-MX",{weekday:"long",day:"numeric",month:"long"});
+
+// ---------- Hoy ----------
+function renderHome(){const p=plan();const total=p.due+p.newCards;const cC=counts(keysFor({track:"c",cont:"all"})),cF=counts(keysFor({track:"f",cont:"all"}));
+  const errs=keysFor(ALL).filter(k=>S.cards[k]&&S.cards[k].bad>0).length;const learned=keysFor(ALL).filter(seen).length;
+  const t=S.days[dkey()];const scope=(S.settings.cont==="all"?"Todo el mundo":CONT[S.settings.cont])+" · "+({both:"capitales y banderas",c:"solo capitales",f:"solo banderas"})[S.settings.track];
+  $("#view").innerHTML=`<div class="stack g32">
+    <section class="today-hero stack g16">
+      <span class="eyebrow">${esc(fmtDate())}</span>
+      ${total?`<div class="stack g4"><span class="hero-num">${total}</span><span class="hero-sub">${total===1?"tarjeta":"tarjetas"} para hoy</span></div>
+      <div class="breakdown"><span><b class="num">${p.due}</b> repasos</span><span><b class="num">${p.newC}</b> ${p.newC===1?"país nuevo":"países nuevos"}</span><span>≈ ${Math.max(1,Math.round(total*12/60))} min</span></div>`
+      :`<div class="stack g4"><span class="hero-num">0</span><span class="hero-sub">${t?"Terminaste por hoy":"Nada pendiente"}</span></div>
+      <p class="muted">${t?`Respondiste ${t.n} tarjetas hoy con ${Math.round(100*t.ok/t.n)}% de aciertos. Mañana vuelven las que toca repasar.`:"Puedes hacer práctica extra con tus tarjetas más débiles."}</p>`}
+      <button class="btn block" id="go"${!total&&!learned?" disabled":""}>${total?"Empezar":"Práctica extra"}</button>
+      <span class="muted" style="font-size:14px">${esc(scope)} · <button id="scope" style="appearance:none;border:0;background:none;padding:0;color:var(--sea);font-weight:600;cursor:pointer">cambiar</button></span>
+    </section>
+    <section class="stack g12">
+      <div class="section-h"><span class="eyebrow">Tu pasaporte</span><span class="count">${cC.dom+cF.dom} / 390 sellos</span></div>
+      <div class="sheet stack g16" style="padding:16px">
+        <div class="track"><b>Capitales</b><span class="val"><b>${cC.dom}</b> dominadas · ${cC.con+cC.apr} en curso</span>${meter(cC)}</div>
+        <div class="track"><b>Banderas</b><span class="val"><b>${cF.dom}</b> dominadas · ${cF.con+cF.apr} en curso</span>${meter(cF)}</div>
+      </div>
+    </section>
+    <section class="stack g12">
+      <div class="section-h"><span class="eyebrow">Práctica dirigida</span></div>
+      <div class="sheet list">
+        <button class="cell" id="goErr"${errs?"":" disabled"}><span class="t">Repasar mis errores<small>${errs?"Las tarjetas que has fallado, las más recientes primero":"Aquí aparecerán cuando falles alguna"}</small></span><span class="count">${errs||""}</span>${CHEV}</button>
+        <button class="cell" id="goType"${learned?"":" disabled"}><span class="t">Modo examen<small>Todo escrito, sin opciones. Para comprobar si de verdad las sabes.</small></span>${CHEV}</button>
+      </div>
+    </section></div>`;
+  $("#go").onclick=()=>{buildSession();render()};
+  $("#scope").onclick=()=>{tab="ajustes";render()};
+  $("#goErr").onclick=()=>{const ks=keysFor(ALL).filter(k=>S.cards[k]&&S.cards[k].bad>0).sort((a,b)=>(S.cards[b].lastBad||0)-(S.cards[a].lastBad||0)).slice(0,S.settings.size);if(ks.length){buildSession({keys:shuffle(ks)});render()}};
+  $("#goType").onclick=()=>{const ks=shuffle(keysFor(ALL).filter(seen)).slice(0,S.settings.size);if(ks.length){buildSession({keys:ks,forceType:true});render()}}}
+
+// ---------- sesión: vistas ----------
+function qbar(){const done=sess.q.slice(0,sess.i).filter(x=>x.t==="q").length;
+  return `<div class="qbar"><button class="iconbtn" id="quit" aria-label="Salir de la sesión">${X}</button><div class="progress" role="progressbar" aria-valuenow="${done}" aria-valuemax="${sess.total}"><i style="transform:scaleX(${done/Math.max(1,sess.total)})"></i></div><span class="count">${done}/${sess.total}</span></div>`}
+function renderIntro(){const c=BY[sess.q[sess.i].k.split(":")[0]];
+  $("#view").innerHTML=`${qbar()}<section class="sheet intro">
+    <span class="badge">País nuevo</span>
+    <div class="flag" role="img" aria-label="Bandera de ${esc(c.name)}">${flag(c.iso)}</div>
+    <div class="stack g4"><span class="country maplabel">${esc(c.name)}</span><span class="cap">${CAP}${esc(c.cap)}</span></div>
+    <span class="cont">${CONT[c.cont]}</span>
+    ${c.note?`<p class="note" style="text-align:left">${esc(c.note)}</p>`:""}
+    <p class="tip">Fíjate en un rasgo de la bandera y di la capital en voz alta. En un momento te lo pregunto.</p>
+  </section>
+  <div style="padding-top:16px"><button class="btn block" id="next">Lo tengo</button></div>`;
+  $("#quit").onclick=quit;$("#next").onclick=()=>{sess.introSeen++;sess.i++;render()};$("#next").focus({preventScroll:true})}
+
+let cur=null,answered=false;
+function renderQ(){const item=sess.q[sess.i];cur=makeQ(item);answered=false;const{c,dir,how}=cur;let prompt;
+  if(dir==="country2cap")prompt=`<span class="country maplabel">${esc(c.name)}</span><span class="ask">¿Cuál es su capital?</span>`;
+  else if(dir==="cap2country")prompt=`<span class="cityname">${CAP}${esc(c.cap)}</span><span class="ask">¿De qué país es capital?</span>`;
+  else if(dir==="flag2country")prompt=`<div class="flag" role="img" aria-label="Bandera">${flag(c.iso)}</div><span class="ask">¿De qué país es esta bandera?</span>`;
+  else prompt=`<span class="country maplabel">${esc(c.name)}</span><span class="ask">¿Cuál es su bandera?</span>`;
+  let body;
+  if(how==="mc"){const kind=dir==="country2cap"?"cap":dir==="cap2country"?"name":"flag";const ops=distractors(c,kind,cur.k);
+    body=dir==="country2flag"?`<div class="flaggrid">${ops.map((i,n)=>`<button class="choice" data-iso="${i}" aria-label="Opción ${n+1}"><span class="key">${n+1}</span>${flag(i)}</button>`).join("")}</div>`
+    :`<div class="choices">${ops.map((i,n)=>`<button class="choice" data-iso="${i}"><span class="key">${n+1}</span><span class="txt">${esc(dir==="country2cap"?BY[i].cap:BY[i].name)}</span></button>`).join("")}</div>`}
+  else body=`<form class="answer" id="tf" autocomplete="off"><input class="field" id="ans" type="text" placeholder="${dir==="country2cap"?"Escribe la capital":"Escribe el país"}" autocapitalize="words" autocorrect="off" spellcheck="false" enterkeyhint="done">
+    <div class="aux"><button type="button" class="btn quiet" id="hint">Pista</button><button type="button" class="btn quiet" id="idk">No lo sé</button><button class="btn" id="send">Comprobar</button></div>
+    <p class="hint" id="hintTxt"></p></form>`;
+  $("#view").innerHTML=`${qbar()}<section class="prompt">${item.fresh||item.retry?`<span class="badge">${item.retry?"otra vez":"recién visto"}</span>`:""}${prompt}</section>${body}`;
+  $("#quit").onclick=quit;
+  if(how==="mc")$$(".choice").forEach(b=>b.onclick=()=>pickMC(b.dataset.iso));
+  else{const inp=$("#ans");setTimeout(()=>inp.focus(),60);$("#tf").onsubmit=e=>{e.preventDefault();if(inp.value.trim())pickType(inp.value)};
+    $("#idk").onclick=()=>pickType("");
+    $("#hint").onclick=()=>{cur.hint=true;const tgt=dir==="country2cap"?c.cap:c.name;$("#hintTxt").textContent=`Empieza con “${tgt[0]}” · ${tgt.replace(/[^A-Za-zÀ-ÿ]/g,"").length} letras · ${CONT[c.cont]}`}}}
+function pickMC(iso){if(answered)return;answered=true;const ok=iso===cur.iso;
+  $$(".choice").forEach(b=>{b.disabled=true;if(b.dataset.iso===cur.iso)b.classList.add("right");else if(b.dataset.iso===iso)b.classList.add("wrong");else b.classList.add("dim")});
+  finish(ok,"mc",ok?null:iso)}
+function pickType(txt){if(answered)return;const{c,dir}=cur;const alts=dir==="country2cap"?c.capAlts:c.nameAlts;const g=norm(txt);let ok=false,typo=false;
+  for(const a of alts){const n=norm(a);if(g===n){ok=true;typo=false;break}if(g&&lev(g,n)<=Math.max(1,Math.floor(n.length/6))){ok=true;typo=true}}
+  let guess=null;if(!ok&&g)for(const x of C){const al=dir==="country2cap"?x.capAlts:x.nameAlts;if(al.some(a=>lev(norm(a),g)<=1)){guess=x.iso;break}}
+  answered=true;$("#ans").disabled=true;$$("#tf button").forEach(b=>b.disabled=true);finish(ok,cur.hint?"mc":"type",guess,typo,!g)}
+function finish(ok,how,guess,typo,skipped){const{c,dir,k}=cur;const stamped=grade(k,ok,how,guess);const item=sess.q[sess.i];
+  if(ok){sess.ok++;if(stamped)sess.stamps++}else{sess.bad++;sess.missed.add(k);if((item.retry||0)<2){sess.q.splice(Math.min(sess.q.length,sess.i+4),0,{k,t:"q",retry:(item.retry||0)+1});sess.total++}}
+  let conf="";if(!ok&&guess&&BY[guess]){const g=BY[guess];conf=dir==="country2cap"?`${esc(g.cap)} es la capital de ${esc(g.name)} ${flag(g.iso)}`:dir==="cap2country"?`La capital de ${esc(g.name)} es ${esc(g.cap)}`:`Elegiste la bandera de ${esc(g.name)} ${flag(g.iso)}`}
+  const b=card(k).b;const when=ok&&b>=1?`próximo repaso en ${IV[b]} ${IV[b]===1?"día":"días"}`:"vuelve en unas preguntas";
+  const tgt=dir==="country2cap"?c.cap:c.name;
+  $("#resultHost").innerHTML=`<div class="result ${ok?"ok":"no"}" role="status"><div class="inner">
+    <div class="row spread"><span class="verdict">${ok?(typo?"Correcto, revisa la ortografía":"Correcto"):(skipped?"Esta era":"No es esa")}</span><span class="next-when">${when}</span></div>
+    <div class="fact"><span class="f">${flag(c.iso)}</span><div class="who"><div class="maplabel">${esc(c.name)}</div><div class="c">${CAP}${esc(c.cap)}</div></div></div>
+    ${typo?`<p class="note">Se escribe “${esc(tgt)}”.</p>`:""}${conf?`<p class="note">${conf}</p>`:""}${c.note&&!ok?`<p class="note">${esc(c.note)}</p>`:""}
+    ${stamped?`<span class="stamp">${CAP}Sellado · ${k.endsWith(":c")?"capital":"bandera"} dominada</span>`:""}
+    <button class="btn block" id="next">Continuar</button></div></div>`;
+  $("#next").onclick=next;setTimeout(()=>{const n=$("#next");n&&n.focus({preventScroll:true})},30)}
+function next(){sess.i++;if(sess.i>=sess.q.length){sess.done=true;commitNew()}render()}
+function commitNew(){if(S.newDay.d!==dkey())S.newDay={d:dkey(),n:0};S.newDay.n+=sess.introSeen*(S.settings.track==="both"?2:1);sess.introSeen=0;save()}
+function quit(){if(sess)commitNew();sess=null;render()}
+document.addEventListener("keydown",e=>{if(tab!=="hoy"||!sess||sess.done)return;
+  if(e.key==="Enter"&&$("#next")&&document.activeElement.tagName!=="INPUT"){e.preventDefault();$("#next").click();return}
+  if(!answered&&cur&&cur.how==="mc"&&/^[1-4]$/.test(e.key)){const b=$$(".choice")[+e.key-1];b&&b.click()}});
+
+function renderSummary(){const tot=sess.ok+sess.bad;const pct=tot?Math.round(100*sess.ok/tot):0;const miss=[...sess.missed];
+  const tomorrow=keysFor(ALL).filter(k=>seen(k)&&S.cards[k].due<=Date.now()+DAY).length;
+  $("#view").innerHTML=`<div class="stack g32" style="padding-top:24px">
+    <section class="stack g16"><span class="eyebrow">Sesión terminada</span>
+      <div class="stack g4"><span class="summary-num">${pct}%</span><span class="hero-sub">de aciertos</span></div>
+      <div class="kv"><div><b>${tot}</b><span>respuestas</span></div><div><b>${sess.stamps}</b><span>sellos nuevos</span></div><div><b>${streak()}</b><span>días de racha</span></div></div>
+      <p class="muted">${tomorrow} tarjetas para mañana.${pct<70&&tot>5?" Con menos de 70% conviene bajar los países nuevos por día hasta consolidar.":""}</p>
+    </section>
+    ${miss.length?`<section class="stack g12"><div class="section-h"><span class="eyebrow">Para reforzar</span><span class="count">${miss.length}</span></div>
+      <div class="sheet list">${miss.map(k=>{const c=BY[k.split(":")[0]];return `<div class="ctry"><span class="f">${flag(c.iso)}</span><div class="n"><b>${esc(c.name)}</b><span>${CAP}${esc(c.cap)}</span></div><span class="count">${k.endsWith(":c")?"capital":"bandera"}</span></div>`}).join("")}</div>
+      <button class="btn line block" id="again">Repetir solo estas</button></section>`:""}
+    <button class="btn block" id="home">Listo</button></div>`;
+  $("#home").onclick=()=>{sess=null;render()};if($("#again"))$("#again").onclick=()=>{buildSession({keys:shuffle(miss)});render()}}
+
+// ---------- Progreso ----------
+function renderProgress(){const all=keysFor(ALL);const learned=all.filter(seen).length;
+  if(!learned){$("#view").innerHTML=`<div class="sheet empty">Aquí verás tu avance por región, tu constancia y los países que más se te resisten. Empieza tu primera sesión en Hoy.</div>`;return}
+  const cC=counts(all.filter(k=>k.endsWith(":c"))),cF=counts(all.filter(k=>k.endsWith(":f")));
+  const cells=[];const start=new Date();start.setHours(0,0,0,0);start.setDate(start.getDate()-((start.getDay()+6)%7)-21);// 4 semanas, de lunes a domingo, hasta la actual
+  for(let i=0;i<28;i++){const d=new Date(start);d.setDate(start.getDate()+i);const k=dkey(d);const v=S.days[k];const fut=d>new Date();cells.push(`<i class="${fut?"":v?(v.n>=40?"h3":v.n>=15?"h2":"h1"):""}${k===dkey()?" today":""}" ${fut?'style="opacity:.35"':""} title="${k}${v?" · "+v.n:""}"></i>`)}
+  const hard=Object.entries(S.cards).filter(([k,v])=>v.bad>0&&BY[k.split(":")[0]]).sort((a,b)=>(b[1].bad-b[1].ok/3)-(a[1].bad-a[1].ok/3)).slice(0,8);
+  const pairs={};for(const[k,v]of Object.entries(S.cards))for(const[g,n]of Object.entries(v.conf||{})){const key=k+">"+g;pairs[key]=(pairs[key]||0)+n}
+  const top=Object.entries(pairs).filter(([,n])=>n>=1).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const days7=Array.from({length:7},(_,i)=>S.days[dkey(new Date(Date.now()-i*DAY))]).filter(Boolean);const n7=days7.reduce((a,d)=>a+d.n,0),ok7=days7.reduce((a,d)=>a+d.ok,0);
+  $("#view").innerHTML=`<div class="stack g32">
+    <section class="stack g16">
+      <div class="stack g4"><span class="hero-num">${cC.dom+cF.dom}<span style="font-size:25px;color:var(--ink-3);letter-spacing:-.01em"> / 390</span></span><span class="hero-sub">sellos en tu pasaporte</span></div>
+      <div class="sheet stack g16" style="padding:16px">
+        <div class="track"><b>Capitales</b><span class="val"><b>${cC.dom}</b> / 195</span>${meter(cC)}</div>
+        <div class="track"><b>Banderas</b><span class="val"><b>${cF.dom}</b> / 195</span>${meter(cF)}</div>
+        <div class="breakdown" style="font-size:13px"><span><i class="legend-dot m-found"></i>Dominada: escrita bien, repaso a 20+ días</span><span><i class="legend-dot m-sea"></i>Consolidando</span><span><i class="legend-dot m-pencil"></i>Aprendiendo</span></div>
+      </div>
+    </section>
+    <section class="stack g12"><div class="section-h"><span class="eyebrow">Por región</span><span class="count">consolidado o más</span></div>
+      <div class="sheet stack g12" style="padding:16px">${Object.entries(CONT).map(([k,n])=>{const ct=counts(all.filter(x=>BY[x.split(":")[0]].cont===k));return `<div class="controw"><span>${n}</span>${meter(ct)}<span class="pct">${Math.round(100*(ct.dom+ct.con)/ct.tot)}%</span></div>`}).join("")}</div></section>
+    <section class="stack g12"><div class="section-h"><span class="eyebrow">Constancia · 4 semanas</span><span class="count">${n7} resp. · ${n7?Math.round(100*ok7/n7):0}% esta semana</span></div>
+      <div class="sheet stack g8" style="padding:16px"><div class="heat" style="font:500 11px var(--font-data);color:var(--ink-3);text-align:center">${["L","M","M","J","V","S","D"].map(d=>`<span>${d}</span>`).join("")}</div><div class="heat">${cells.join("")}</div></div></section>
+    ${hard.length?`<section class="stack g12"><div class="section-h"><span class="eyebrow">Se te resisten</span><span class="count">fallos · aciertos</span></div>
+      <div class="sheet list">${hard.map(([k,v])=>{const c=BY[k.split(":")[0]];return `<div class="ctry"><span class="f">${flag(c.iso)}</span><div class="n"><b>${esc(c.name)}</b><span>${k.endsWith(":c")?CAP+esc(c.cap):"bandera"}</span></div><span class="count">${v.bad} · ${v.ok}</span></div>`}).join("")}</div>
+      <button class="btn line block" id="drill">Practicar estas ${hard.length}</button></section>`:""}
+    ${top.length?`<section class="stack g12"><div class="section-h"><span class="eyebrow">Confusiones frecuentes</span></div>
+      <div class="sheet list">${top.map(([p,n])=>{const[k,g]=p.split(">");const[a,t]=k.split(":");return `<div class="ctry"><span class="f">${flag(a)}</span><div class="n"><b>${esc(BY[a].name)}</b><span>${t==="c"?"respondiste "+esc(BY[g].cap):"la confundes con "+esc(BY[g].name)+" "+flag(g)}</span></div><span class="count">${n}×</span></div>`}).join("")}</div></section>`:""}
+  </div>`;
+  if($("#drill"))$("#drill").onclick=()=>{tab="hoy";buildSession({keys:shuffle(hard.map(h=>h[0]))});render()}}
+
+// ---------- Atlas ----------
+let exQ="",exC="all";
+function pip(k,l){const b=boxOf(k);const cls=!seen(k)?"":b>=5?"p-found":b>=3?"p-sea":"p-pencil";return `<span class="pip ${cls}" title="${l}">${l}</span>`}
+function renderAtlas(){$("#view").innerHTML=`<div class="search"><input class="field" id="exq" type="search" placeholder="Buscar país o capital" value="${esc(exQ)}" autocorrect="off" spellcheck="false">
+  <div class="chips">${[["all","Todos"],...Object.entries(CONT)].map(([v,l])=>`<button class="chip" data-v="${v}" aria-pressed="${v===exC}">${l}</button>`).join("")}</div></div>
+  <div class="sheet list" id="exl"></div><p class="muted" style="font-size:13px;padding:12px 4px">C capital · B bandera. Lápiz: aprendiendo. Azul: consolidando. Verde: dominada.</p>`;
+  const draw=()=>{const q=norm(exQ);const rows=C.filter(c=>(exC==="all"||c.cont===exC)&&(!q||c.nameAlts.some(a=>norm(a).includes(q))||c.capAlts.some(a=>norm(a).includes(q)))).sort((a,b)=>a.name.localeCompare(b.name,"es"));
+    $("#exl").innerHTML=rows.map(c=>`<div class="ctry"><span class="f">${flag(c.iso)}</span><div class="n"><b>${esc(c.name)}</b><span>${CAP}${esc(c.cap)}</span></div><div class="pips">${pip(c.iso+":c","C")}${pip(c.iso+":f","B")}</div></div>`).join("")||`<div class="empty">Ningún país o capital coincide con “${esc(exQ)}”.</div>`};
+  draw();$("#exq").oninput=e=>{exQ=e.target.value;draw()};
+  $$(".chip").forEach(b=>b.onclick=()=>{exC=b.dataset.v;$$(".chip").forEach(x=>x.setAttribute("aria-pressed",x===b));draw()})}
+
+// ---------- Ajustes ----------
+function seg(id,val,opts){return `<div class="segmented" id="${id}">${opts.map(([v,l])=>`<button type="button" data-v="${v}" aria-pressed="${v===val}">${l}</button>`).join("")}</div>`}
+function renderSettings(){const st=S.settings;
+  $("#view").innerHTML=`<div class="stack g32">
+  <section class="stack g12"><div class="section-h"><span class="eyebrow">Qué practicar</span></div>
+    <div class="sheet">
+      <div class="setting"><span class="lbl">Tarjetas</span>${seg("sTrack",st.track,[["both","Ambas"],["c","Capitales"],["f","Banderas"]])}</div>
+      <div class="setting"><span class="lbl">Región</span><div class="chips" style="margin:0;padding:0;flex-wrap:wrap">${[["all","Todo el mundo"],...Object.entries(CONT)].map(([v,l])=>`<button class="chip" data-v="${v}" aria-pressed="${v===st.cont}">${l}</button>`).join("")}</div>
+        <span class="help">Empezar por un continente y completarlo da mejores resultados que mezclar todo desde el día uno.</span></div>
+      <div class="setting"><span class="lbl">Forma de responder</span>${seg("sAns",st.ans,[["auto","Automática"],["mc","Opciones"],["type","Escribir"]])}
+        <span class="help">Automática: eliges entre 4 opciones mientras la aprendes y luego la escribes. Solo cuenta como dominada si la escribiste bien.</span></div>
+    </div></section>
+  <section class="stack g12"><div class="section-h"><span class="eyebrow">Ritmo</span></div>
+    <div class="sheet">
+      <div class="setting"><div class="row spread"><span class="lbl">Tarjetas nuevas por día</span><div class="stepper"><button class="iconbtn" data-step="newPerDay" data-d="-2" aria-label="Menos">−</button><span class="v">${st.newPerDay}</span><button class="iconbtn" data-step="newPerDay" data-d="2" aria-label="Más">+</button></div></div>
+        <span class="help">${st.newPerDay} tarjetas son ${st.track==="both"?Math.ceil(st.newPerDay/2)+" países":st.newPerDay+" países"} al día: completarías el mundo en unos ${Math.ceil(195/(st.track==="both"?Math.ceil(st.newPerDay/2):st.newPerDay))} días.</span></div>
+      <div class="setting"><div class="row spread"><span class="lbl">Máximo por sesión</span><div class="stepper"><button class="iconbtn" data-step="size" data-d="-5" aria-label="Menos">−</button><span class="v">${st.size}</span><button class="iconbtn" data-step="size" data-d="5" aria-label="Más">+</button></div></div></div>
+    </div></section>
+  <section class="stack g12"><div class="section-h"><span class="eyebrow">Respaldo</span></div>
+    <div class="sheet setting">
+      <p class="help">Tu avance vive solo en este teléfono. Copia el código cada semana o dos y guárdalo en Notas; pégalo aquí para restaurar en otro dispositivo.</p>
+      <textarea class="field" id="bk" aria-label="Código de respaldo"></textarea>
+      <div class="aux"><button class="btn" id="bkCopy">Copiar código</button><button class="btn quiet" id="bkLoad">Restaurar</button></div>
+      <span class="help" id="bkMsg" role="status"></span>
+    </div></section>
+  <section class="stack g12"><button class="btn danger block" id="reset">Borrar todo el progreso</button></section></div>`;
+  const bind=(id,key)=>$$(`#${id} button`).forEach(b=>b.onclick=()=>{S.settings[key]=b.dataset.v;save();renderSettings()});bind("sTrack","track");bind("sAns","ans");
+  $$(".setting .chip").forEach(b=>b.onclick=()=>{S.settings.cont=b.dataset.v;save();renderSettings()});
+  $$("[data-step]").forEach(b=>b.onclick=()=>{const k=b.dataset.step,lim=k==="size"?[5,60]:[2,40];S.settings[k]=Math.min(lim[1],Math.max(lim[0],S.settings[k]+ +b.dataset.d));save();renderSettings()});
+  const bk=$("#bk");try{bk.value=btoa(unescape(encodeURIComponent(JSON.stringify(S))))}catch(e){}
+  $("#bkCopy").onclick=()=>{navigator.clipboard.writeText(bk.value).then(()=>$("#bkMsg").textContent="Código copiado.").catch(()=>{bk.focus();bk.select();$("#bkMsg").textContent="Selecciónalo y cópialo manualmente."})};
+  $("#bkLoad").onclick=()=>{try{const o=JSON.parse(decodeURIComponent(escape(atob(bk.value.trim()))));if(!o.cards)throw 0;S=Object.assign(structuredClone(DEF),o);S.settings=Object.assign({},DEF.settings,S.settings);save();renderSettings();$("#bkMsg").textContent="Progreso restaurado."}catch(e){$("#bkMsg").textContent="Ese código no es válido. Pega el código completo que copiaste."}};
+  let armed=false;$("#reset").onclick=e=>{if(!armed){armed=true;e.target.textContent="Toca otra vez para borrar";setTimeout(()=>{armed=false;e.target&&(e.target.textContent="Borrar todo el progreso")},4000);return}S=structuredClone(DEF);save();sess=null;tab="hoy";render()}}
+
+render();
+if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
+</script>
+</body>
+</html>

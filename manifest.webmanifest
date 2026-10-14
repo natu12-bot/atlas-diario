@@ -1,0 +1,17 @@
+{
+  "name": "Atlas Diario",
+  "short_name": "Atlas",
+  "description": "Capitales y banderas del mundo con repetición espaciada",
+  "lang": "es",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F1F4F3",
+  "theme_color": "#1C5D8F",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}
